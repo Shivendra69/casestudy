@@ -1,0 +1,159 @@
+package com.carrental;
+
+import com.carrental.dao.ICarLeaseRepository;
+import com.carrental.dao.ICarLeaseRepositoryImpl;
+import com.carrental.entity.Customer;
+import com.carrental.entity.Lease;
+import com.carrental.entity.Vehicle;
+import com.carrental.exception.CarNotFoundException;
+import com.carrental.exception.CustomerNotFoundException;
+import com.carrental.exception.LeaseNotFoundException;
+import org.junit.Before;
+import org.junit.Test;
+
+import java.sql.Date;
+import java.util.List;
+
+import static org.junit.Assert.*;
+
+public class CarRentalTest {
+    private ICarLeaseRepository repo;
+
+    @Before
+    public void setUp() {
+        repo = new ICarLeaseRepositoryImpl();
+    }
+
+    @Test
+    public void testAddCar() {
+        Vehicle vehicle = new Vehicle(0, "Toyota", "Camry", 2023, 50.0, "available", 5, 2.5);
+        repo.addCar(vehicle);
+        List<Vehicle> availableCars = repo.listAvailableCars();
+        assertTrue("The car should be added to available cars",
+                availableCars.stream().anyMatch(v -> v.getModel().equals("Camry") && v.getMake().equals("Toyota")));
+    }
+
+    @Test
+    public void testFindCarById() throws CarNotFoundException {
+        Vehicle vehicle = new Vehicle(0, "Honda", "Civic", 2022, 45.0, "available", 5, 2.0);
+        repo.addCar(vehicle);
+        List<Vehicle> availableCars = repo.listAvailableCars();
+        int vehicleId = availableCars.stream()
+                .filter(v -> v.getModel().equals("Civic") && v.getMake().equals("Honda"))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Test car not found after adding"))
+                .getVehicleID();
+        Vehicle foundVehicle = repo.findCarById(vehicleId);
+        assertNotNull("The car should be found", foundVehicle);
+        assertEquals("The make should match", "Honda", foundVehicle.getMake());
+    }
+
+    @Test(expected = CarNotFoundException.class)
+    public void testFindCarByIdNotFound() throws CarNotFoundException {
+        repo.findCarById(9999);
+    }
+
+    @Test
+    public void testUpdateVehicleStatus() throws CarNotFoundException {
+        Vehicle vehicle = new Vehicle(0, "Ford", "Focus", 2021, 40.0, "available", 4, 1.6);
+        repo.addCar(vehicle);
+        List<Vehicle> availableCars = repo.listAvailableCars();
+        int vehicleId = availableCars.stream()
+                .filter(v -> v.getModel().equals("Focus") && v.getMake().equals("Ford"))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Test car not found after adding"))
+                .getVehicleID();
+        repo.updateVehicleStatus(vehicleId, "notAvailable");
+        Vehicle updatedVehicle = repo.findCarById(vehicleId);
+        assertEquals("The status should be updated to notAvailable", "notAvailable", updatedVehicle.getStatus());
+    }
+
+    @Test
+    public void testListAvailableCars() {
+        Vehicle vehicle1 = new Vehicle(0, "Nissan", "Altima", 2020, 55.0, "available", 5, 2.5);
+        Vehicle vehicle2 = new Vehicle(0, "BMW", "X3", 2023, 70.0, "notAvailable", 5, 3.0);
+        repo.addCar(vehicle1);
+        repo.addCar(vehicle2);
+        List<Vehicle> availableCars = repo.listAvailableCars();
+        assertTrue("The list should contain the available Nissan Altima",
+                availableCars.stream().anyMatch(v -> v.getModel().equals("Altima") && v.getMake().equals("Nissan")));
+        assertFalse("The list should not contain the unavailable BMW X3",
+                availableCars.stream().anyMatch(v -> v.getModel().equals("X3") && v.getMake().equals("BMW")));
+    }
+
+    @Test
+    public void testCreateLease() throws CarNotFoundException, CustomerNotFoundException {
+        // Add a customer
+        Customer customer = new Customer(0, "John", "Doe", "john.doe@example.com", "123-456-7890");
+        repo.addCustomer(customer);
+        int customerId = repo.listCustomers().stream()
+                .filter(c -> c.getEmail().equals("john.doe@example.com"))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Test customer not found after adding"))
+                .getCustomerID();
+
+        // Add a vehicle
+        Vehicle vehicle = new Vehicle(0, "Chevrolet", "Malibu", 2022, 60.0, "available", 5, 2.0);
+        repo.addCar(vehicle);
+        int vehicleId = repo.listAvailableCars().stream()
+                .filter(v -> v.getModel().equals("Malibu") && v.getMake().equals("Chevrolet"))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Test car not found after adding"))
+                .getVehicleID();
+
+        // Create a lease
+        Date startDate = Date.valueOf("2025-04-08");
+        Date endDate = Date.valueOf("2025-04-15");
+        Lease lease = repo.createLease(customerId, vehicleId, startDate, endDate, "DailyLease");
+
+        // Verify the lease
+        assertNotNull("The lease should be created", lease);
+        assertEquals("Customer ID should match", customerId, lease.getCustomerID());
+        assertEquals("Vehicle ID should match", vehicleId, lease.getVehicleID());
+        assertEquals("Start date should match", startDate, lease.getStartDate());
+
+        // Verify the vehicle status changed to notAvailable
+        Vehicle updatedVehicle = repo.findCarById(vehicleId);
+        assertEquals("Vehicle status should be notAvailable", "notAvailable", updatedVehicle.getStatus());
+    }
+
+    @Test
+    public void testFindLeaseById() throws LeaseNotFoundException, CarNotFoundException, CustomerNotFoundException {
+        // Add a customer
+        Customer customer = new Customer(0, "Jane", "Smith", "jane.smith@example.com", "987-654-3210");
+        repo.addCustomer(customer);
+        int customerId = repo.listCustomers().stream()
+                .filter(c -> c.getEmail().equals("jane.smith@example.com"))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Test customer not found after adding"))
+                .getCustomerID();
+
+        // Add a vehicle
+        Vehicle vehicle = new Vehicle(0, "Tesla", "Model 3", 2023, 80.0, "available", 5, 0.0);
+        repo.addCar(vehicle);
+        int vehicleId = repo.listAvailableCars().stream()
+                .filter(v -> v.getModel().equals("Model 3") && v.getMake().equals("Tesla"))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Test car not found after adding"))
+                .getVehicleID();
+
+        // Create a lease
+        Date startDate = Date.valueOf("2025-04-10");
+        Date endDate = Date.valueOf("2025-04-20");
+        Lease createdLease = repo.createLease(customerId, vehicleId, startDate, endDate, "MonthlyLease");
+
+        // Find the lease by ID
+        Lease foundLease = repo.findLeaseById(createdLease.getLeaseID());
+
+        // Verify the lease details
+        assertNotNull("The lease should be found", foundLease);
+        assertEquals("Lease ID should match", createdLease.getLeaseID(), foundLease.getLeaseID());
+        assertEquals("Customer ID should match", customerId, foundLease.getCustomerID());
+        assertEquals("Vehicle ID should match", vehicleId, foundLease.getVehicleID());
+    }
+
+    @Test(expected = LeaseNotFoundException.class)
+    public void testFindLeaseByIdNotFound() throws LeaseNotFoundException {
+        repo.findLeaseById(9999); // Assuming 9999 is not a valid lease ID
+    }
+}

@@ -1,350 +1,164 @@
-package com.carrental.dao;
+package main;
 
-import com.carrental.entity.*;
-import com.carrental.exception.*;
-import com.carrental.util.DBConnection;
-
-import java.sql.*;
-import java.util.ArrayList;
+import dao.ProjectRepositoryImpl;
+import entity.Employee;
+import entity.Project;
+import entity.Task;
+import exception.EmployeeNotFoundException;
+import exception.ProjectNotFoundException;
 import java.util.List;
+import java.util.Scanner;
+import util.DBConnUtil;
 
-public class ICarLeaseRepositoryImpl implements ICarLeaseRepository {
+public class ProjectApp {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        ProjectRepositoryImpl repo = new ProjectRepositoryImpl();
 
-    @Override
-    public void addCar(Vehicle car) {
-        String sql = "INSERT INTO Vehicle (make, model, year, dailyRate, status, passengerCapacity, engineCapacity) VALUES (?, ?, ?, ?, ?, ?, ?)";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, car.getMake());
-            stmt.setString(2, car.getModel());
-            stmt.setInt(3, car.getYear());
-            stmt.setDouble(4, car.getDailyRate());
-            stmt.setString(5, car.getStatus());
-            stmt.setInt(6, car.getPassengerCapacity());
-            stmt.setDouble(7, car.getEngineCapacity());
-            stmt.executeUpdate();
-            System.out.println("Vehicle added successfully!");
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
+        while (true) {
+            System.out.println("\n=== Project Management System ===");
+            System.out.println("1. Add Employee");
+            System.out.println("2. Add Project");
+            System.out.println("3. Add Task");
+            System.out.println("4. Assign Project to Employee");
+            System.out.println("5. Assign Task to Employee");
+            System.out.println("6. Delete Employee");
+            System.out.println("7. Delete Project");
+            System.out.println("8. List All Tasks");
+            System.out.println("9. Exit");
+            System.out.print("Enter your choice: ");
+            int choice = scanner.nextInt();
+            scanner.nextLine(); // Consume newline
 
-    @Override
-    public void removeCar(int carID) throws CarNotFoundException {
-        String sql = "DELETE FROM Vehicle WHERE vehicleID = ?";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, carID);
-            int rows = stmt.executeUpdate();
-            if (rows == 0) throw new CarNotFoundException("Car with ID " + carID + " not found.");
-            System.out.println("Car removed successfully!");
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
+            try {
+                switch (choice) {
+                    case 1:
+                        // Add Employee
+                        System.out.print("Enter Employee ID: ");
+                        int empId = scanner.nextInt();
+                        scanner.nextLine(); // Consume newline
+                        System.out.print("Enter Employee Name: ");
+                        String empName = scanner.nextLine();
+                        System.out.print("Enter Designation: ");
+                        String designation = scanner.nextLine();
+                        System.out.print("Enter Gender (M/F): ");
+                        String gender = scanner.nextLine();
+                        System.out.print("Enter Salary: ");
+                        double salary = scanner.nextDouble();
+                        scanner.nextLine(); // Consume newline
+                        System.out.print("Enter Project ID (0 if none): ");
+                        int projectId = scanner.nextInt();
+                        scanner.nextLine(); // Consume newline
 
-    @Override
-    public List<Vehicle> listAvailableCars() {
-        List<Vehicle> vehicles = new ArrayList<>();
-        String sql = "SELECT * FROM Vehicle WHERE status = 'available'";
-        try (Connection conn = DBConnection.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                vehicles.add(new Vehicle(
-                        rs.getInt("vehicleID"), rs.getString("make"), rs.getString("model"),
-                        rs.getInt("year"), rs.getDouble("dailyRate"), rs.getString("status"),
-                        rs.getInt("passengerCapacity"), rs.getDouble("engineCapacity")));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return vehicles;
-    }
+                        Employee emp = new Employee(empId, empName, designation, gender, salary, projectId);
+                        boolean empAdded = repo.createEmployee(emp);
+                        System.out.println("Employee added: " + empAdded);
+                        break;
 
-    @Override
-    public List<Vehicle> listRentedCars() {
-        List<Vehicle> vehicles = new ArrayList<>();
-        String sql = "SELECT * FROM Vehicle WHERE status = 'notAvailable'";
-        try (Connection conn = DBConnection.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                vehicles.add(new Vehicle(
-                        rs.getInt("vehicleID"), rs.getString("make"), rs.getString("model"),
-                        rs.getInt("year"), rs.getDouble("dailyRate"), rs.getString("status"),
-                        rs.getInt("passengerCapacity"), rs.getDouble("engineCapacity")));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return vehicles;
-    }
+                    case 2:
+                        // Add Project
+                        System.out.print("Enter Project ID: ");
+                        int projId = scanner.nextInt();
+                        scanner.nextLine(); // Consume newline
+                        System.out.print("Enter Project Name: ");
+                        String projName = scanner.nextLine();
+                        System.out.print("Enter Description: ");
+                        String description = scanner.nextLine();
+                        System.out.print("Enter Start Date (YYYY-MM-DD): ");
+                        String startDate = scanner.nextLine();
+                        System.out.print("Enter Status (started/dev/build/test/deployed): ");
+                        String status = scanner.nextLine();
 
-    @Override
-    public Vehicle findCarById(int carID) throws CarNotFoundException {
-        String sql = "SELECT * FROM Vehicle WHERE vehicleID = ?";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, carID);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return new Vehicle(
-                            rs.getInt("vehicleID"), rs.getString("make"), rs.getString("model"),
-                            rs.getInt("year"), rs.getDouble("dailyRate"), rs.getString("status"),
-                            rs.getInt("passengerCapacity"), rs.getDouble("engineCapacity"));
-                } else {
-                    throw new CarNotFoundException("Car with ID " + carID + " not found.");
+                        Project proj = new Project(projId, projName, description, startDate, status);
+                        boolean projAdded = repo.createProject(proj);
+                        System.out.println("Project added: " + projAdded);
+                        break;
+
+                    case 3:
+                        // Add Task
+                        System.out.print("Enter Task ID: ");
+                        int taskId = scanner.nextInt();
+                        scanner.nextLine(); // Consume newline
+                        System.out.print("Enter Task Name: ");
+                        String taskName = scanner.nextLine();
+                        System.out.print("Enter Project ID: ");
+                        int taskProjId = scanner.nextInt();
+                        System.out.print("Enter Employee ID: ");
+                        int taskEmpId = scanner.nextInt();
+                        scanner.nextLine(); // Consume newline
+                        System.out.print("Enter Status (Assigned/started/completed): ");
+                        String taskStatus = scanner.nextLine();
+
+                        Task task = new Task(taskId, taskName, taskProjId, taskEmpId, taskStatus);
+                        boolean taskAdded = repo.createTask(task);
+                        System.out.println("Task added: " + taskAdded);
+                        break;
+
+                    case 4:
+                        // Assign Project to Employee
+                        System.out.print("Enter Project ID: ");
+                        int assignProjId = scanner.nextInt();
+                        System.out.print("Enter Employee ID: ");
+                        int assignEmpId = scanner.nextInt();
+                        repo.assignProjectToEmployee(assignProjId, assignEmpId);
+                        System.out.println("Project assigned to employee");
+                        break;
+
+                    case 5:
+                        // Assign Task to Employee
+                        System.out.print("Enter Task ID: ");
+                        int assignTaskId = scanner.nextInt();
+                        System.out.print("Enter Project ID: ");
+                        int assignTaskProjId = scanner.nextInt();
+                        System.out.print("Enter Employee ID: ");
+                        int assignTaskEmpId = scanner.nextInt();
+                        repo.assignTaskInProjectToEmployee(assignTaskId, assignTaskProjId, assignTaskEmpId);
+                        System.out.println("Task assigned to employee");
+                        break;
+
+                    case 6:
+                        // Delete Employee
+                        System.out.print("Enter Employee ID to delete: ");
+                        int deleteEmpId = scanner.nextInt();
+                        repo.deleteEmployee(deleteEmpId);
+                        System.out.println("Employee deleted");
+                        break;
+
+                    case 7:
+                        // Delete Project
+                        System.out.print("Enter Project ID to delete: ");
+                        int deleteProjId = scanner.nextInt();
+                        repo.deleteProject(deleteProjId);
+                        System.out.println("Project deleted");
+                        break;
+
+                    case 8:
+                        // List All Tasks
+                        System.out.print("Enter Employee ID: ");
+                        int listEmpId = scanner.nextInt();
+                        System.out.print("Enter Project ID: ");
+                        int listProjId = scanner.nextInt();
+                        List<Task> tasks = repo.getAllTasks(listEmpId, listProjId);
+                        tasks.forEach(t -> System.out.println(t.getTaskName()));
+                        break;
+
+                    case 9:
+                        System.out.println("Exiting...");
+                        DBConnUtil.closeConnection();
+                        scanner.close();
+                        System.exit(0);
+
+                    default:
+                        System.out.println("Invalid choice");
                 }
+            } catch (EmployeeNotFoundException e) {
+                System.out.println("Error: " + e.getMessage());
+            } catch (ProjectNotFoundException e) {
+                System.out.println("Error: " + e.getMessage());
+            } catch (Exception e) {
+                System.out.println("An error occurred: " + e.getMessage());
+                scanner.nextLine(); // Clear input buffer in case of exception
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new CarNotFoundException("Error finding car with ID " + carID + ": " + e.getMessage());
         }
-    }
-
-    @Override
-    public void updateVehicleStatus(int carID, String status) throws CarNotFoundException {
-        String sql = "UPDATE Vehicle SET status = ? WHERE vehicleID = ?";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, status);
-            stmt.setInt(2, carID);
-            int rows = stmt.executeUpdate();
-            if (rows == 0) throw new CarNotFoundException("Car with ID " + carID + " not found.");
-            System.out.println("Vehicle status updated successfully!");
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new CarNotFoundException("Error updating car with ID " + carID + ": " + e.getMessage());
-        }
-    }
-
-    @Override
-    public void addCustomer(Customer customer) {
-        String sql = "INSERT INTO Customer (firstName, lastName, email, phoneNumber) VALUES (?, ?, ?, ?)";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, customer.getFirstName());
-            stmt.setString(2, customer.getLastName());
-            stmt.setString(3, customer.getEmail());
-            stmt.setString(4, customer.getPhoneNumber());
-            stmt.executeUpdate();
-            System.out.println("Customer added successfully!");
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    @Override
-    public void removeCustomer(int customerID) throws CustomerNotFoundException {
-        String sql = "DELETE FROM Customer WHERE customerID = ?";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, customerID);
-            int rows = stmt.executeUpdate();
-            if (rows == 0) throw new CustomerNotFoundException("Customer with ID " + customerID + " not found.");
-            System.out.println("Customer removed successfully!");
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    @Override
-    public List<Customer> listCustomers() {
-        List<Customer> customers = new ArrayList<>();
-        String sql = "SELECT * FROM Customer";
-        try (Connection conn = DBConnection.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                customers.add(new Customer(
-                        rs.getInt("customerID"), rs.getString("firstName"), rs.getString("lastName"),
-                        rs.getString("email"), rs.getString("phoneNumber")));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return customers;
-    }
-
-    @Override
-    public Customer findCustomerById(int customerID) throws CustomerNotFoundException {
-        String sql = "SELECT * FROM Customer WHERE customerID = ?";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, customerID);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return new Customer(
-                            rs.getInt("customerID"), rs.getString("firstName"), rs.getString("lastName"),
-                            rs.getString("email"), rs.getString("phoneNumber"));
-                } else {
-                    throw new CustomerNotFoundException("Customer with ID " + customerID + " not found.");
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new CustomerNotFoundException("Error finding customer with ID " + customerID + ": " + e.getMessage());
-        }
-    }
-
-    @Override
-    public Lease createLease(int customerID, int carID, Date startDate, Date endDate, String type) throws CarNotFoundException, CustomerNotFoundException {
-        Vehicle car = findCarById(carID);
-        if (!"available".equals(car.getStatus())) {
-            throw new CarNotFoundException("Car with ID " + carID + " is not available.");
-        }
-        findCustomerById(customerID);
-        String sql = "INSERT INTO Lease (vehicleID, customerID, startDate, endDate, type) VALUES (?, ?, ?, ?, ?)";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            stmt.setInt(1, carID);
-            stmt.setInt(2, customerID);
-            stmt.setDate(3, startDate);
-            stmt.setDate(4, endDate);
-            stmt.setString(5, type);
-            stmt.executeUpdate();
-            try (ResultSet rs = stmt.getGeneratedKeys()) {
-                if (rs.next()) {
-                    int leaseID = rs.getInt(1);
-                    try (PreparedStatement updateStmt = conn.prepareStatement("UPDATE Vehicle SET status = 'notAvailable' WHERE vehicleID = ?")) {
-                        updateStmt.setInt(1, carID);
-                        updateStmt.executeUpdate();
-                    }
-                    System.out.println("Lease created successfully!");
-                    return new Lease(leaseID, carID, customerID, startDate, endDate, type);
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    @Override
-    public void returnCar(int leaseID) throws LeaseNotFoundException {
-        String sql = "SELECT vehicleID FROM Lease WHERE leaseID = ? AND endDate >= CURDATE()";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, leaseID);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    int vehicleID = rs.getInt("vehicleID");
-                    try (PreparedStatement updateStmt = conn.prepareStatement("UPDATE Vehicle SET status = 'available' WHERE vehicleID = ?")) {
-                        updateStmt.setInt(1, vehicleID);
-                        updateStmt.executeUpdate();
-                    }
-                    System.out.println("Car returned successfully!");
-                } else {
-                    throw new LeaseNotFoundException("Active lease with ID " + leaseID + " not found.");
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new LeaseNotFoundException("Error returning car for lease ID " + leaseID + ": " + e.getMessage());
-        }
-    }
-
-    @Override
-    public List<Lease> listActiveLeases() {
-        List<Lease> leases = new ArrayList<>();
-        String sql = "SELECT * FROM Lease WHERE endDate >= CURDATE()";
-        try (Connection conn = DBConnection.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                leases.add(new Lease(
-                        rs.getInt("leaseID"), rs.getInt("vehicleID"), rs.getInt("customerID"),
-                        rs.getDate("startDate"), rs.getDate("endDate"), rs.getString("type")));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return leases;
-    }
-
-    @Override
-    public List<Lease> listLeaseHistory() {
-        List<Lease> leases = new ArrayList<>();
-        String sql = "SELECT * FROM Lease";
-        try (Connection conn = DBConnection.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                leases.add(new Lease(
-                        rs.getInt("leaseID"), rs.getInt("vehicleID"), rs.getInt("customerID"),
-                        rs.getDate("startDate"), rs.getDate("endDate"), rs.getString("type")));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return leases;
-    }
-
-    @Override
-    public Lease findLeaseById(int leaseID) throws LeaseNotFoundException {
-        String sql = "SELECT * FROM Lease WHERE leaseID = ?";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, leaseID);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return new Lease(
-                            rs.getInt("leaseID"), rs.getInt("vehicleID"), rs.getInt("customerID"),
-                            rs.getDate("startDate"), rs.getDate("endDate"), rs.getString("type"));
-                } else {
-                    throw new LeaseNotFoundException("Lease with ID " + leaseID + " not found.");
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new LeaseNotFoundException("Error finding lease with ID " + leaseID + ": " + e.getMessage());
-        }
-    }
-
-    @Override
-    public void recordPayment(Lease lease, double amount) throws LeaseNotFoundException {
-        String sqlCheck = "SELECT * FROM Lease WHERE leaseID = ?";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmtCheck = conn.prepareStatement(sqlCheck)) {
-            stmtCheck.setInt(1, lease.getLeaseID());
-            try (ResultSet rs = stmtCheck.executeQuery()) {
-                if (!rs.next()) {
-                    throw new LeaseNotFoundException("Lease with ID " + lease.getLeaseID() + " not found.");
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new LeaseNotFoundException("Error checking lease ID " + lease.getLeaseID() + ": " + e.getMessage());
-        }
-
-        String sql = "INSERT INTO Payment (leaseID, paymentDate, amount) VALUES (?, CURDATE(), ?)";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, lease.getLeaseID());
-            stmt.setDouble(2, amount);
-            stmt.executeUpdate();
-            System.out.println("Payment recorded successfully!");
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    @Override
-    public List<Payment> listPayments() {
-        List<Payment> payments = new ArrayList<>();
-        String sql = "SELECT * FROM Payment";
-        try (Connection conn = DBConnection.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                payments.add(new Payment(
-                        rs.getInt("paymentID"), rs.getInt("leaseID"),
-                        rs.getDate("paymentDate"), rs.getDouble("amount")));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return payments;
     }
 }

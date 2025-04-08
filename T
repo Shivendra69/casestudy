@@ -1,4 +1,4 @@
-package main;
+package com.projectmanagement;
 
 import dao.ProjectRepositoryImpl;
 import entity.Employee;
@@ -6,159 +6,150 @@ import entity.Project;
 import entity.Task;
 import exception.EmployeeNotFoundException;
 import exception.ProjectNotFoundException;
-import java.util.List;
-import java.util.Scanner;
+import org.junit.Before;
+import org.junit.Test;
 import util.DBConnUtil;
 
-public class ProjectApp {
-    public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
-        ProjectRepositoryImpl repo = new ProjectRepositoryImpl();
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.util.List;
 
-        while (true) {
-            System.out.println("\n=== Project Management System ===");
-            System.out.println("1. Add Employee");
-            System.out.println("2. Add Project");
-            System.out.println("3. Add Task");
-            System.out.println("4. Assign Project to Employee");
-            System.out.println("5. Assign Task to Employee");
-            System.out.println("6. Delete Employee");
-            System.out.println("7. Delete Project");
-            System.out.println("8. List All Tasks");
-            System.out.println("9. Exit");
-            System.out.print("Enter your choice: ");
-            int choice = scanner.nextInt();
-            scanner.nextLine(); // Consume newline
+import static org.junit.Assert.*;
 
-            try {
-                switch (choice) {
-                    case 1:
-                        // Add Employee
-                        System.out.print("Enter Employee ID: ");
-                        int empId = scanner.nextInt();
-                        scanner.nextLine(); // Consume newline
-                        System.out.print("Enter Employee Name: ");
-                        String empName = scanner.nextLine();
-                        System.out.print("Enter Designation: ");
-                        String designation = scanner.nextLine();
-                        System.out.print("Enter Gender (M/F): ");
-                        String gender = scanner.nextLine();
-                        System.out.print("Enter Salary: ");
-                        double salary = scanner.nextDouble();
-                        scanner.nextLine(); // Consume newline
-                        System.out.print("Enter Project ID (0 if none): ");
-                        int projectId = scanner.nextInt();
-                        scanner.nextLine(); // Consume newline
+public class ProjectRepositoryTest {
+    private ProjectRepositoryImpl repo;
 
-                        Employee emp = new Employee(empId, empName, designation, gender, salary, projectId);
-                        boolean empAdded = repo.createEmployee(emp);
-                        System.out.println("Employee added: " + empAdded);
-                        break;
+    @Before
+    public void setUp() {
+        // Initialize the repository and database connection
+        repo = new ProjectRepositoryImpl();
+        // Reset the database state before each test
+        cleanUpDatabase();
+    }
 
-                    case 2:
-                        // Add Project
-                        System.out.print("Enter Project ID: ");
-                        int projId = scanner.nextInt();
-                        scanner.nextLine(); // Consume newline
-                        System.out.print("Enter Project Name: ");
-                        String projName = scanner.nextLine();
-                        System.out.print("Enter Description: ");
-                        String description = scanner.nextLine();
-                        System.out.print("Enter Start Date (YYYY-MM-DD): ");
-                        String startDate = scanner.nextLine();
-                        System.out.print("Enter Status (started/dev/build/test/deployed): ");
-                        String status = scanner.nextLine();
+    private void cleanUpDatabase() {
+        // Clean up database tables to ensure a fresh state
+        try (Connection conn = DBConnUtil.getConnection()) {
+            conn.createStatement().execute("DELETE FROM Task");
+            conn.createStatement().execute("DELETE FROM Employee");
+            conn.createStatement().execute("DELETE FROM Project");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
 
-                        Project proj = new Project(projId, projName, description, startDate, status);
-                        boolean projAdded = repo.createProject(proj);
-                        System.out.println("Project added: " + projAdded);
-                        break;
+    @Test
+    public void testCreateEmployeeSuccessfully() {
+        // Test case 1: Test if employee is created successfully
+        Employee emp = new Employee(1, "John Doe", "Developer", "M", 50000.0, 0);
+        boolean result = repo.createEmployee(emp);
 
-                    case 3:
-                        // Add Task
-                        System.out.print("Enter Task ID: ");
-                        int taskId = scanner.nextInt();
-                        scanner.nextLine(); // Consume newline
-                        System.out.print("Enter Task Name: ");
-                        String taskName = scanner.nextLine();
-                        System.out.print("Enter Project ID: ");
-                        int taskProjId = scanner.nextInt();
-                        System.out.print("Enter Employee ID: ");
-                        int taskEmpId = scanner.nextInt();
-                        scanner.nextLine(); // Consume newline
-                        System.out.print("Enter Status (Assigned/started/completed): ");
-                        String taskStatus = scanner.nextLine();
+        assertTrue("Employee should be created successfully", result);
 
-                        Task task = new Task(taskId, taskName, taskProjId, taskEmpId, taskStatus);
-                        boolean taskAdded = repo.createTask(task);
-                        System.out.println("Task added: " + taskAdded);
-                        break;
+        // Verify employee exists in the database
+        try (Connection conn = DBConnUtil.getConnection();
+             PreparedStatement stmt = conn.prepareStatement("SELECT * FROM Employee WHERE employeeId = ?")) {
+            stmt.setInt(1, 1);
+            var rs = stmt.executeQuery();
+            assertTrue("Employee should exist in the database", rs.next());
+            assertEquals("Employee name should match", "John Doe", rs.getString("employeeName"));
+        } catch (SQLException e) {
+            fail("Database error: " + e.getMessage());
+        }
+    }
 
-                    case 4:
-                        // Assign Project to Employee
-                        System.out.print("Enter Project ID: ");
-                        int assignProjId = scanner.nextInt();
-                        System.out.print("Enter Employee ID: ");
-                        int assignEmpId = scanner.nextInt();
-                        repo.assignProjectToEmployee(assignProjId, assignEmpId);
-                        System.out.println("Project assigned to employee");
-                        break;
+    @Test
+    public void testCreateTaskSuccessfully() {
+        // Test case 2: Test if task is created successfully
+        // First, create a project and employee
+        Project proj = new Project(1, "Project A", "Test Project", "2025-04-01", "started");
+        Employee emp = new Employee(1, "Jane Doe", "Tester", "F", 60000.0, 1);
+        repo.createProject(proj);
+        repo.createEmployee(emp);
 
-                    case 5:
-                        // Assign Task to Employee
-                        System.out.print("Enter Task ID: ");
-                        int assignTaskId = scanner.nextInt();
-                        System.out.print("Enter Project ID: ");
-                        int assignTaskProjId = scanner.nextInt();
-                        System.out.print("Enter Employee ID: ");
-                        int assignTaskEmpId = scanner.nextInt();
-                        repo.assignTaskInProjectToEmployee(assignTaskId, assignTaskProjId, assignTaskEmpId);
-                        System.out.println("Task assigned to employee");
-                        break;
+        Task task = new Task(1, "Test Task", 1, 1, "Assigned");
+        boolean result = repo.createTask(task);
 
-                    case 6:
-                        // Delete Employee
-                        System.out.print("Enter Employee ID to delete: ");
-                        int deleteEmpId = scanner.nextInt();
-                        repo.deleteEmployee(deleteEmpId);
-                        System.out.println("Employee deleted");
-                        break;
+        assertTrue("Task should be created successfully", result);
 
-                    case 7:
-                        // Delete Project
-                        System.out.print("Enter Project ID to delete: ");
-                        int deleteProjId = scanner.nextInt();
-                        repo.deleteProject(deleteProjId);
-                        System.out.println("Project deleted");
-                        break;
+        // Verify task exists in the database
+        try (Connection conn = DBConnUtil.getConnection();
+             PreparedStatement stmt = conn.prepareStatement("SELECT * FROM Task WHERE taskId = ?")) {
+            stmt.setInt(1, 1);
+            var rs = stmt.executeQuery();
+            assertTrue("Task should exist in the database", rs.next());
+            assertEquals("Task name should match", "Test Task", rs.getString("taskName"));
+        } catch (SQLException e) {
+            fail("Database error: " + e.getMessage());
+        }
+    }
 
-                    case 8:
-                        // List All Tasks
-                        System.out.print("Enter Employee ID: ");
-                        int listEmpId = scanner.nextInt();
-                        System.out.print("Enter Project ID: ");
-                        int listProjId = scanner.nextInt();
-                        List<Task> tasks = repo.getAllTasks(listEmpId, listProjId);
-                        tasks.forEach(t -> System.out.println(t.getTaskName()));
-                        break;
+    @Test
+    public void testSearchProjectsAndTasksAssignedToEmployee() {
+        // Test case 3: Test search for projects and tasks assigned to employee
+        // Setup: Create employee, project, and tasks
+        Employee emp = new Employee(1, "Alice Smith", "Manager", "F", 70000.0, 0);
+        Project proj = new Project(1, "Project B", "Development", "2025-04-01", "dev");
+        Task task1 = new Task(1, "Task 1", 1, 1, "started");
+        Task task2 = new Task(2, "Task 2", 1, 1, "completed");
 
-                    case 9:
-                        System.out.println("Exiting...");
-                        DBConnUtil.closeConnection();
-                        scanner.close();
-                        System.exit(0);
+        repo.createEmployee(emp);
+        repo.createProject(proj);
+        repo.assignProjectToEmployee(1, 1); // Assign project to employee
+        repo.createTask(task1);
+        repo.createTask(task2);
 
-                    default:
-                        System.out.println("Invalid choice");
-                }
-            } catch (EmployeeNotFoundException e) {
-                System.out.println("Error: " + e.getMessage());
-            } catch (ProjectNotFoundException e) {
-                System.out.println("Error: " + e.getMessage());
-            } catch (Exception e) {
-                System.out.println("An error occurred: " + e.getMessage());
-                scanner.nextLine(); // Clear input buffer in case of exception
-            }
+        // Search for tasks assigned to employee in project
+        List<Task> tasks = repo.getAllTasks(1, 1);
+
+        assertNotNull("Task list should not be null", tasks);
+        assertEquals("Should return 2 tasks", 2, tasks.size());
+        assertTrue("Task 1 should be in the list", tasks.stream().anyMatch(t -> t.getTaskName().equals("Task 1")));
+        assertTrue("Task 2 should be in the list", tasks.stream().anyMatch(t -> t.getTaskName().equals("Task 2")));
+    }
+
+    @Test
+    public void testExceptionsThrownCorrectly() {
+        // Test case 4: Test if exceptions are thrown correctly
+        // Scenario 1: Delete non-existent employee
+        try {
+            repo.deleteEmployee(999); // Non-existent employee ID
+            fail("Should throw EmployeeNotFoundException");
+        } catch (EmployeeNotFoundException e) {
+            assertEquals("Expected exception message", "Employee with ID 999 not found", e.getMessage());
+        } catch (Exception e) {
+            fail("Unexpected exception: " + e.getMessage());
+        }
+
+        // Scenario 2: Delete non-existent project
+        try {
+            repo.deleteProject(999); // Non-existent project ID
+            fail("Should throw ProjectNotFoundException");
+        } catch (ProjectNotFoundException e) {
+            assertEquals("Expected exception message", "Project with ID 999 not found", e.getMessage());
+        } catch (Exception e) {
+            fail("Unexpected exception: " + e.getMessage());
+        }
+
+        // Scenario 3: Assign project to non-existent employee
+        try {
+            repo.assignProjectToEmployee(1, 999); // Non-existent employee ID
+            fail("Should throw EmployeeNotFoundException");
+        } catch (EmployeeNotFoundException e) {
+            assertEquals("Expected exception message", "Employee with ID 999 not found", e.getMessage());
+        } catch (Exception e) {
+            fail("Unexpected exception: " + e.getMessage());
+        }
+
+        // Scenario 4: Assign task to non-existent employee/project
+        try {
+            repo.assignTaskInProjectToEmployee(1, 999, 1); // Non-existent project ID
+            fail("Should throw ProjectNotFoundException");
+        } catch (ProjectNotFoundException e) {
+            assertEquals("Expected exception message", "Project with ID 999 not found", e.getMessage());
+        } catch (Exception e) {
+            fail("Unexpected exception: " + e.getMessage());
         }
     }
 }

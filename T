@@ -1,2 +1,608 @@
-C:\Users\2000147715\Downloads\Project_Final-main\Project_Final-main\Project_Management\Project_Management\src\test\java\Test1\ProjectRepositoryTest.java:47:45
-java: unreported exception java.lang.Exception; must be caught or declared to be thrown
+package dao;
+
+import entity.*;
+import exception.*;
+import util.DBConnUtil;
+
+import java.sql.*;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+
+public class JobBoardDAOImpl implements IJobBoardDAO {
+
+    @Override
+    public void initializeDatabase() throws DatabaseConnectionException {
+        try (Connection conn = DBConnUtil.getConnection()) {
+            Statement stmt = conn.createStatement();
+            stmt.execute("CREATE TABLE IF NOT EXISTS Companies (companyID INT PRIMARY KEY AUTO_INCREMENT, companyName VARCHAR(100), location VARCHAR(100))");
+            stmt.execute("CREATE TABLE IF NOT EXISTS Jobs (jobID INT PRIMARY KEY AUTO_INCREMENT, companyID INT, jobTitle VARCHAR(100), jobDescription TEXT, jobLocation VARCHAR(100), salary DECIMAL(15,2), jobType VARCHAR(50), postedDate DATE, FOREIGN KEY (companyID) REFERENCES Companies(companyID))");
+            stmt.execute("CREATE TABLE IF NOT EXISTS Applicants (applicantID INT PRIMARY KEY AUTO_INCREMENT, firstName VARCHAR(50), lastName VARCHAR(50), email VARCHAR(100), phone VARCHAR(20), resume VARCHAR(255))");
+            stmt.execute("CREATE TABLE IF NOT EXISTS Applications (applicationID INT PRIMARY KEY AUTO_INCREMENT, jobID INT, applicantID INT, applicationDate DATE, coverLetter TEXT, FOREIGN KEY (jobID) REFERENCES Jobs(jobID), FOREIGN KEY (applicantID) REFERENCES Applicants(applicantID))");
+        } catch (SQLException e) {
+            throw new DatabaseConnectionException("Failed to initialize database: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void insertJobListing(JobListing job) throws DatabaseConnectionException {
+        String sql = "INSERT INTO Jobs (companyID, jobTitle, jobDescription, jobLocation, salary, jobType, postedDate) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        try (Connection conn = DBConnUtil.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, job.getCompanyID());
+            stmt.setString(2, job.getJobTitle());
+            stmt.setString(3, job.getJobDescription());
+            stmt.setString(4, job.getJobLocation());
+            stmt.setDouble(5, job.getSalary());
+            stmt.setString(6, job.getJobType());
+            stmt.setDate(7, job.getPostedDate());
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new DatabaseConnectionException("Failed to insert job listing: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void insertCompany(Company company) throws DatabaseConnectionException {
+        String sql = "INSERT INTO Companies (companyName, location) VALUES (?, ?)";
+        try (Connection conn = DBConnUtil.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, company.getCompanyName());
+            stmt.setString(2, company.getLocation());
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new DatabaseConnectionException("Failed to insert company: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void insertApplicant(Applicant applicant) throws DatabaseConnectionException, InvalidEmailFormatException {
+        if (!applicant.getEmail().matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+            throw new InvalidEmailFormatException("Invalid email format: " + applicant.getEmail());
+        }
+        String sql = "INSERT INTO Applicants (firstName, lastName, email, phone, resume) VALUES (?, ?, ?, ?, ?)";
+        try (Connection conn = DBConnUtil.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, applicant.getFirstName());
+            stmt.setString(2, applicant.getLastName());
+            stmt.setString(3, applicant.getEmail());
+            stmt.setString(4, applicant.getPhone());
+            stmt.setString(5, applicant.getResume());
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new DatabaseConnectionException("Failed to insert applicant: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void insertJobApplication(JobApplication application) throws DatabaseConnectionException, ApplicationDeadlineException {
+        String sqlCheck = "SELECT postedDate FROM Jobs WHERE jobID = ?";
+        try (Connection conn = DBConnUtil.getConnection();
+             PreparedStatement stmtCheck = conn.prepareStatement(sqlCheck)) {
+            stmtCheck.setInt(1, application.getJobID());
+            ResultSet rs = stmtCheck.executeQuery();
+            if (rs.next()) {
+                Date postedDate = rs.getDate("postedDate");
+                LocalDate deadline = postedDate.toLocalDate().plusMonths(1); // Assume 1-month deadline
+                if (application.getApplicationDate().toLocalDate().isAfter(deadline)) {
+                    throw new ApplicationDeadlineException("Application deadline passed for job ID " + application.getJobID());
+                }
+            }
+        } catch (SQLException e) {
+            throw new DatabaseConnectionException("Failed to check job deadline: " + e.getMessage());
+        }
+
+        String sql = "INSERT INTO Applications (jobID, applicantID, applicationDate, coverLetter) VALUES (?, ?, ?, ?)";
+        try (Connection conn = DBConnUtil.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, application.getJobID());
+            stmt.setInt(2, application.getApplicantID());
+            stmt.setDate(3, application.getApplicationDate());
+            stmt.setString(4, application.getCoverLetter());
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new DatabaseConnectionException("Failed to insert job application: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public List<JobListing> getJobListings() throws DatabaseConnectionException {
+        List<JobListing> jobs = new ArrayList<>();
+        String sql = "SELECT * FROM Jobs";
+        try (Connection conn = DBConnUtil.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                jobs.add(new JobListing(
+                        rs.getInt("jobID"), rs.getInt("companyID"), rs.getString("jobTitle"),
+                        rs.getString("jobDescription"), rs.getString("jobLocation"), rs.getDouble("salary"),
+                        rs.getString("jobType"), rs.getDate("postedDate")));
+            }
+        } catch (SQLException e) {
+            throw new DatabaseConnectionException("Failed to retrieve job listings: " + e.getMessage());
+        }
+        return jobs;
+    }
+
+    @Override
+    public List<Company> getCompanies() throws DatabaseConnectionException {
+        List<Company> companies = new ArrayList<>();
+        String sql = "SELECT * FROM Companies";
+        try (Connection conn = DBConnUtil.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                companies.add(new Company(
+                        rs.getInt("companyID"), rs.getString("companyName"), rs.getString("location")));
+            }
+        } catch (SQLException e) {
+            throw new DatabaseConnectionException("Failed to retrieve companies: " + e.getMessage());
+        }
+        return companies;
+    }
+
+    @Override
+    public List<Applicant> getApplicants() throws DatabaseConnectionException {
+        List<Applicant> applicants = new ArrayList<>();
+        String sql = "SELECT * FROM Applicants";
+        try (Connection conn = DBConnUtil.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                applicants.add(new Applicant(
+                        rs.getInt("applicantID"), rs.getString("firstName"), rs.getString("lastName"),
+                        rs.getString("email"), rs.getString("phone"), rs.getString("resume")));
+            }
+        } catch (SQLException e) {
+            throw new DatabaseConnectionException("Failed to retrieve applicants: " + e.getMessage());
+        }
+        return applicants;
+    }
+
+    @Override
+    public List<JobApplication> getApplicationsForJob(int jobID) throws DatabaseConnectionException {
+        List<JobApplication> applications = new ArrayList<>();
+        String sql = "SELECT * FROM Applications WHERE jobID = ?";
+        try (Connection conn = DBConnUtil.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, jobID);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                applications.add(new JobApplication(
+                        rs.getInt("applicationID"), rs.getInt("jobID"), rs.getInt("applicantID"),
+                        rs.getDate("applicationDate"), rs.getString("coverLetter")));
+            }
+        } catch (SQLException e) {
+            throw new DatabaseConnectionException("Failed to retrieve applications: " + e.getMessage());
+        }
+        return applications;
+    }
+
+    @Override
+    public double calculateAverageSalary() throws DatabaseConnectionException, NegativeSalaryException {
+        String sql = "SELECT salary FROM Jobs";
+        double totalSalary = 0;
+        int count = 0;
+        try (Connection conn = DBConnUtil.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                double salary = rs.getDouble("salary");
+                if (salary < 0) {
+                    throw new NegativeSalaryException("Negative salary found in job listing");
+                }
+                totalSalary += salary;
+                count++;
+            }
+            return count > 0 ? totalSalary / count : 0;
+        } catch (SQLException e) {
+            throw new DatabaseConnectionException("Failed to calculate average salary: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public List<JobListing> getJobsBySalaryRange(double minSalary, double maxSalary) throws DatabaseConnectionException {
+        List<JobListing> jobs = new ArrayList<>();
+        String sql = "SELECT * FROM Jobs WHERE salary BETWEEN ? AND ?";
+        try (Connection conn = DBConnUtil.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setDouble(1, minSalary);
+            stmt.setDouble(2, maxSalary);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                jobs.add(new JobListing(
+                        rs.getInt("jobID"), rs.getInt("companyID"), rs.getString("jobTitle"),
+                        rs.getString("jobDescription"), rs.getString("jobLocation"), rs.getDouble("salary"),
+                        rs.getString("jobType"), rs.getDate("postedDate")));
+            }
+        } catch (SQLException e) {
+            throw new DatabaseConnectionException("Failed to retrieve jobs by salary range: " + e.getMessage());
+        }
+        return jobs;
+    }
+}
+
+
+_________________________
+
+
+package exception;
+
+public class InvalidEmailFormatException extends Exception {
+    public InvalidEmailFormatException(String message) {
+        super(message);
+    }
+}
+
+____________
+package exception;
+
+public class NegativeSalaryException extends Exception {
+    public NegativeSalaryException(String message) {
+        super(message);
+    }
+}
+
+
+___________
+
+package exception;
+
+public class FileUploadException extends Exception {
+    public FileUploadException(String message) {
+        super(message);
+    }
+}
+
+________________
+
+
+package exception;
+
+public class ApplicationDeadlineException extends Exception {
+    public ApplicationDeadlineException(String message) {
+        super(message);
+    }
+}
+
+_________________
+
+package exception;
+
+public class DatabaseConnectionException extends Exception {
+    public DatabaseConnectionException(String message) {
+        super(message);
+    }
+}
+
+________________
+
+package util;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Properties;
+
+public class DBPropertyUtil {
+    public static String getConnectionString(String propertyFileName) {
+        Properties props = new Properties();
+        try (InputStream input = DBPropertyUtil.class.getClassLoader().getResourceAsStream(propertyFileName)) {
+            if (input == null) {
+                throw new IOException("Unable to find " + propertyFileName);
+            }
+            props.load(input);
+            String hostname = props.getProperty("hostname");
+            String dbname = props.getProperty("dbname");
+            String username = props.getProperty("username");
+            String password = props.getProperty("password");
+            String port = props.getProperty("port");
+            return "jdbc:mysql://" + hostname + ":" + port + "/" + dbname + "?user=" + username + "&password=" + password;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+}
+
+______________
+
+package util;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+
+public class DBConnUtil {
+    public static Connection getConnection() throws DatabaseConnectionException {
+        String connectionString = DBPropertyUtil.getConnectionString("db.properties"); // Adjusted to classpath resource
+        try {
+            return DriverManager.getConnection(connectionString);
+        } catch (SQLException e) {
+            throw new DatabaseConnectionException("Failed to connect to database: " + e.getMessage());
+        }
+    }
+
+    public static void closeConnection(Connection conn) {
+        if (conn != null) {
+            try {
+                conn.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
+
+________________
+
+hostname=localhost
+dbname=careerhub
+username=root
+password=your_password
+port=3306
+
+____________
+
+package main;
+
+import dao.JobBoardDAOImpl;
+import entity.*;
+import exception.*;
+import util.DBConnUtil;
+
+import java.sql.Date;
+import java.util.List;
+import java.util.Scanner;
+
+public class MainModule {
+    private static JobBoardDAOImpl dao = new JobBoardDAOImpl();
+    private static Scanner scanner = new Scanner(System.in);
+
+    public static void main(String[] args) {
+        try {
+            dao.initializeDatabase();
+        } catch (DatabaseConnectionException e) {
+            System.out.println("Error initializing database: " + e.getMessage());
+            return;
+        }
+
+        while (true) {
+            displayMenu();
+            int choice = scanner.nextInt();
+            scanner.nextLine(); // Consume newline
+
+            try {
+                switch (choice) {
+                    case 1: // Add Company
+                        addCompany();
+                        break;
+                    case 2: // Post Job
+                        postJob();
+                        break;
+                    case 3: // Add Applicant
+                        addApplicant();
+                        break;
+                    case 4: // Apply for Job
+                        applyForJob();
+                        break;
+                    case 5: // List Job Listings
+                        listJobListings();
+                        break;
+                    case 6: // List Companies
+                        listCompanies();
+                        break;
+                    case 7: // List Applicants
+                        listApplicants();
+                        break;
+                    case 8: // List Applications for Job
+                        listApplicationsForJob();
+                        break;
+                    case 9: // Calculate Average Salary
+                        calculateAverageSalary();
+                        break;
+                    case 10: // Search Jobs by Salary Range
+                        searchJobsBySalaryRange();
+                        break;
+                    case 11: // Exit
+                        System.out.println("Exiting...");
+                        DBConnUtil.closeConnection(null);
+                        scanner.close();
+                        System.exit(0);
+                    default:
+                        System.out.println("Invalid choice");
+                }
+            } catch (Exception e) {
+                System.out.println("Error: " + e.getMessage());
+            }
+        }
+    }
+
+    private static void displayMenu() {
+        System.out.println("\n=== CareerHub Job Board ===");
+        System.out.println("1. Add Company");
+        System.out.println("2. Post Job");
+        System.out.println("3. Add Applicant");
+        System.out.println("4. Apply for Job");
+        System.out.println("5. List Job Listings");
+        System.out.println("6. List Companies");
+        System.out.println("7. List Applicants");
+        System.out.println("8. List Applications for Job");
+        System.out.println("9. Calculate Average Salary");
+        System.out.println("10. Search Jobs by Salary Range");
+        System.out.println("11. Exit");
+        System.out.print("Enter your choice: ");
+    }
+
+    private static void addCompany() throws DatabaseConnectionException {
+        System.out.print("Enter Company Name: ");
+        String name = scanner.nextLine();
+        System.out.print("Enter Location: ");
+        String location = scanner.nextLine();
+        Company company = new Company(0, name, location);
+        dao.insertCompany(company);
+        System.out.println("Company added successfully");
+    }
+
+    private static void postJob() throws DatabaseConnectionException {
+        System.out.print("Enter Company ID: ");
+        int companyID = scanner.nextInt();
+        scanner.nextLine();
+        System.out.print("Enter Job Title: ");
+        String jobTitle = scanner.nextLine();
+        System.out.print("Enter Job Description: ");
+        String jobDesc = scanner.nextLine();
+        System.out.print("Enter Job Location: ");
+        String jobLocation = scanner.nextLine();
+        System.out.print("Enter Salary: ");
+        double salary = scanner.nextDouble();
+        scanner.nextLine();
+        System.out.print("Enter Job Type (Full-time/Part-time/Contract): ");
+        String jobType = scanner.nextLine();
+        JobListing job = new JobListing(0, companyID, jobTitle, jobDesc, jobLocation, salary, jobType, new Date(System.currentTimeMillis()));
+        dao.insertJobListing(job);
+        System.out.println("Job posted successfully");
+    }
+
+    private static void addApplicant() throws DatabaseConnectionException, InvalidEmailFormatException, FileUploadException {
+        System.out.print("Enter First Name: ");
+        String firstName = scanner.nextLine();
+        System.out.print("Enter Last Name: ");
+        String lastName = scanner.nextLine();
+        System.out.print("Enter Email: ");
+        String email = scanner.nextLine();
+        System.out.print("Enter Phone: ");
+        String phone = scanner.nextLine();
+        System.out.print("Enter Resume File Path: ");
+        String resume = scanner.nextLine();
+        if (!resume.endsWith(".pdf")) {
+            throw new FileUploadException("Unsupported file format. Only PDF allowed.");
+        }
+        Applicant applicant = new Applicant(0, firstName, lastName, email, phone, resume);
+        dao.insertApplicant(applicant);
+        System.out.println("Applicant added successfully");
+    }
+
+    private static void applyForJob() throws DatabaseConnectionException, ApplicationDeadlineException {
+        System.out.print("Enter Job ID: ");
+        int jobID = scanner.nextInt();
+        System.out.print("Enter Applicant ID: ");
+        int applicantID = scanner.nextInt();
+        scanner.nextLine();
+        System.out.print("Enter Cover Letter: ");
+        String coverLetter = scanner.nextLine();
+        JobApplication application = new JobApplication(0, jobID, applicantID, new Date(System.currentTimeMillis()), coverLetter);
+        dao.insertJobApplication(application);
+        System.out.println("Application submitted successfully");
+    }
+
+    private static void listJobListings() throws DatabaseConnectionException {
+        List<JobListing> jobs = dao.getJobListings();
+        jobs.forEach(job -> System.out.println(job.getJobTitle() + " - " + job.getCompanyID() + " - " + job.getSalary()));
+    }
+
+    private static void listCompanies() throws DatabaseConnectionException {
+        List<Company> companies = dao.getCompanies();
+        companies.forEach(company -> System.out.println(company.getCompanyName() + " - " + company.getLocation()));
+    }
+
+    private static void listApplicants() throws DatabaseConnectionException {
+        List<Applicant> applicants = dao.getApplicants();
+        applicants.forEach(applicant -> System.out.println(applicant.getFirstName() + " " + applicant.getLastName() + " - " + applicant.getEmail()));
+    }
+
+    private static void listApplicationsForJob() throws DatabaseConnectionException {
+        System.out.print("Enter Job ID: ");
+        int jobID = scanner.nextInt();
+        List<JobApplication> applications = dao.getApplicationsForJob(jobID);
+        applications.forEach(app -> System.out.println("Applicant ID: " + app.getApplicantID() + " - Date: " + app.getApplicationDate()));
+    }
+
+    private static void calculateAverageSalary() throws DatabaseConnectionException, NegativeSalaryException {
+        double avgSalary = dao.calculateAverageSalary();
+        System.out.println("Average Salary: " + avgSalary);
+    }
+
+    private static void searchJobsBySalaryRange() throws DatabaseConnectionException {
+        System.out.print("Enter Minimum Salary: ");
+        double minSalary = scanner.nextDouble();
+        System.out.print("Enter Maximum Salary: ");
+        double maxSalary = scanner.nextDouble();
+        List<JobListing> jobs = dao.getJobsBySalaryRange(minSalary, maxSalary);
+        jobs.forEach(job -> System.out.println(job.getJobTitle() + " - " + job.getSalary()));
+    }
+}
+
+
+___________
+
+
+
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.hexaware</groupId>
+    <artifactId>CareerHub</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>CareerHub Job Board</name>
+    <description>A job board application for Hexaware coding challenge</description>
+
+    <properties>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+    </properties>
+
+    <dependencies>
+        <!-- MySQL Connector/J -->
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>8.0.33</version>
+        </dependency>
+
+        <!-- JUnit for testing (optional) -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Hamcrest for better assertions (optional) -->
+        <dependency>
+            <groupId>org.hamcrest</groupId>
+            <artifactId>hamcrest-core</artifactId>
+            <version>1.3</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Maven Compiler Plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.8.1</version>
+                <configuration>
+                    <source>1.8</source>
+                    <target>1.8</target>
+                </configuration>
+            </plugin>
+
+            <!-- Maven Exec Plugin to run the main class -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.0.0</version>
+                <configuration>
+                    <mainClass>main.MainModule</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

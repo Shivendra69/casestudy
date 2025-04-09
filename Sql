@@ -1,0 +1,39 @@
+CREATE DATABASE careerhub;
+USE careerhub;
+
+CREATE TABLE Companies (
+    companyID INT PRIMARY KEY AUTO_INCREMENT,
+    companyName VARCHAR(100),
+    location VARCHAR(100)
+);
+
+CREATE TABLE Jobs (
+    jobID INT PRIMARY KEY AUTO_INCREMENT,
+    companyID INT,
+    jobTitle VARCHAR(100),
+    jobDescription TEXT,
+    jobLocation VARCHAR(100),
+    salary DECIMAL(15, 2),
+    jobType VARCHAR(50),
+    postedDate DATE,
+    FOREIGN KEY (companyID) REFERENCES Companies(companyID)
+);
+
+CREATE TABLE Applicants (
+    applicantID INT PRIMARY KEY AUTO_INCREMENT,
+    firstName VARCHAR(50),
+    lastName VARCHAR(50),
+    email VARCHAR(100),
+    phone VARCHAR(20),
+    resume VARCHAR(255)
+);
+
+CREATE TABLE Applications (
+    applicationID INT PRIMARY KEY AUTO_INCREMENT,
+    jobID INT,
+    applicantID INT,
+    applicationDate DATE,
+    coverLetter TEXT,
+    FOREIGN KEY (jobID) REFERENCES Jobs(jobID),
+    FOREIGN KEY (applicantID) REFERENCES Applicants(applicantID)
+);

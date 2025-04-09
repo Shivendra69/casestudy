@@ -1,0 +1,829 @@
+CREATE DATABASE petpals;
+USE petpals;
+
+CREATE TABLE Pets (
+    petID INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(50),
+    age INT,
+    breed VARCHAR(50),
+    type VARCHAR(10), -- 'Dog' or 'Cat'
+    dogBreed VARCHAR(50), -- NULL for cats
+    catColor VARCHAR(50) -- NULL for dogs
+);
+
+CREATE TABLE Donations (
+    donationID INT PRIMARY KEY AUTO_INCREMENT,
+    donorName VARCHAR(100),
+    amount DECIMAL(10, 2),
+    donationDate DATE, -- NULL for item donations
+    itemType VARCHAR(50) -- NULL for cash donations
+);
+
+CREATE TABLE AdoptionEvents (
+    eventID INT PRIMARY KEY AUTO_INCREMENT,
+    eventName VARCHAR(100),
+    eventDate DATE
+);
+
+CREATE TABLE Participants (
+    participantID INT PRIMARY KEY AUTO_INCREMENT,
+    eventID INT,
+    participantName VARCHAR(100),
+    FOREIGN KEY (eventID) REFERENCES AdoptionEvents(eventID)
+);
+
+
+
+
+
+
+______________________
+
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.hexaware</groupId>
+    <artifactId>PetPals</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>PetPals</name>
+    <description>A pet adoption platform for Hexaware coding challenge</description>
+
+    <properties>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>8.0.33</version>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.hamcrest</groupId>
+            <artifactId>hamcrest-core</artifactId>
+            <version>1.3</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.8.1</version>
+                <configuration>
+                    <source>1.8</source>
+                    <target>1.8</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.0.0</version>
+                <configuration>
+                    <mainClass>main.MainModule</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+
+------_----------___________________
+
+
+package entity;
+
+public abstract class Pet {
+    private int petID;
+    private String name;
+    private int age;
+    private String breed;
+
+    public Pet() {}
+
+    public Pet(int petID, String name, int age, String breed) {
+        this.petID = petID;
+        this.name = name;
+        this.age = age;
+        this.breed = breed;
+    }
+
+    // Getters and Setters
+    public int getPetID() { return petID; }
+    public void setPetID(int petID) { this.petID = petID; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public int getAge() { return age; }
+    public void setAge(int age) { this.age = age; }
+    public String getBreed() { return breed; }
+    public void setBreed(String breed) { this.breed = breed; }
+
+    @Override
+    public String toString() {
+        return "Pet [Name=" + name + ", Age=" + age + ", Breed=" + breed + "]";
+    }
+}
+
+_______________________
+
+package entity;
+
+public class Dog extends Pet {
+    private String dogBreed;
+
+    public Dog() {}
+
+    public Dog(int petID, String name, int age, String breed, String dogBreed) {
+        super(petID, name, age, breed);
+        this.dogBreed = dogBreed;
+    }
+
+    public String getDogBreed() { return dogBreed; }
+    public void setDogBreed(String dogBreed) { this.dogBreed = dogBreed; }
+
+    @Override
+    public String toString() {
+        return "Dog [Name=" + getName() + ", Age=" + getAge() + ", Breed=" + getBreed() + ", DogBreed=" + dogBreed + "]";
+    }
+}
+
+____________________
+
+
+package entity;
+
+public class Cat extends Pet {
+    private String catColor;
+
+    public Cat() {}
+
+    public Cat(int petID, String name, int age, String breed, String catColor) {
+        super(petID, name, age, breed);
+        this.catColor = catColor;
+    }
+
+    public String getCatColor() { return catColor; }
+    public void setCatColor(String catColor) { this.catColor = catColor; }
+
+    @Override
+    public String toString() {
+        return "Cat [Name=" + getName() + ", Age=" + getAge() + ", Breed=" + getBreed() + ", Color=" + catColor + "]";
+    }
+}
+
+
+____________'___________
+
+package entity;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class PetShelter {
+    private List<Pet> availablePets;
+
+    public PetShelter() {
+        this.availablePets = new ArrayList<>();
+    }
+
+    public void addPet(Pet pet) {
+        availablePets.add(pet);
+    }
+
+    public void removePet(Pet pet) {
+        availablePets.remove宠物);
+    }
+
+    public List<Pet> getAvailablePets() {
+        return availablePets;
+    }
+}
+
+
+
+__________________
+
+
+package entity;
+
+public abstract class Donation {
+    private int donationID;
+    private String donorName;
+    private double amount;
+
+    public Donation() {}
+
+    public Donation(int donationID, String donorName, double amount) {
+        this.donationID = donationID;
+        this.donorName = donorName;
+        this.amount = amount;
+    }
+
+    public int getDonationID() { return donationID; }
+    public void setDonationID(int donationID) { this.donationID = donationID; }
+    public String getDonorName() { return donorName; }
+    public void setDonorName(String donorName) { this.donorName = donorName; }
+    public double getAmount() { return amount; }
+    public void setAmount(double amount) { this.amount = amount; }
+
+    public abstract void recordDonation();
+}
+
+
+_______________________
+
+package entity;
+
+import java.sql.Date;
+
+public class CashDonation extends Donation {
+    private Date donationDate;
+
+    public CashDonation() {}
+
+    public CashDonation(int donationID, String donorName, double amount, Date donationDate) {
+        super(donationID, donorName, amount);
+        this.donationDate = donationDate;
+    }
+
+    public Date getDonationDate() { return donationDate; }
+    public void setDonationDate(Date donationDate) { this.donationDate = donationDate; }
+
+    @Override
+    public void recordDonation() {
+        System.out.println("Cash donation of $" + getAmount() + " recorded from " + getDonorName() + " on " + donationDate);
+    }
+}
+
+
+
+__________________
+
+
+package entity;
+
+public class ItemDonation extends Donation {
+    private String itemType;
+
+    public ItemDonation() {}
+
+    public ItemDonation(int donationID, String donorName, double amount, String itemType) {
+        super(donationID, donorName, amount);
+        this.itemType = itemType;
+    }
+
+    public String getItemType() { return itemType; }
+    public void setItemType(String itemType) { this.itemType = itemType; }
+
+    @Override
+    public void recordDonation() {
+        System.out.println("Item donation (" + itemType + ") worth $" + getAmount() + " recorded from " + getDonorName());
+    }
+}
+
+___________________
+
+package entity;
+
+import java.sql.Date;
+import java.util.ArrayList;
+import java.util.List;
+
+public class AdoptionEvent {
+    private int eventID;
+    private String eventName;
+    private Date eventDate;
+    private List<String> participants;
+
+    public AdoptionEvent() {
+        this.participants = new ArrayList<>();
+    }
+
+    public AdoptionEvent(int eventID, String eventName, Date eventDate) {
+        this.eventID = eventID;
+        this.eventName = eventName;
+        this.eventDate = eventDate;
+        this.participants = new ArrayList<>();
+    }
+
+    public int getEventID() { return eventID; }
+    public void setEventID(int eventID) { this.eventID = eventID; }
+    public String getEventName() { return eventName; }
+    public void setEventName(String eventName) { this.eventName = eventName; }
+    public Date getEventDate() { return eventDate; }
+    public void setEventDate(Date eventDate) { this.eventDate = eventDate; }
+    public List<String> getParticipants() { return participants; }
+
+    public void registerParticipant(String participant) {
+        participants.add(participant);
+    }
+
+    public void hostEvent() {
+        System.out.println("Hosting event: " + eventName + " on " + eventDate);
+        participants.forEach(p -> System.out.println("Participant: " + p));
+    }
+}
+
+
+_______________________
+
+package dao;
+
+import entity.*;
+import exception.*;
+
+import java.util.List;
+
+public interface IPetPalsDAO {
+    void initializeDatabase() throws DatabaseConnectionException;
+    void addPet(Pet pet) throws DatabaseConnectionException, InvalidPetAgeException;
+    List<Pet> getAvailablePets() throws DatabaseConnectionException, NullReferenceException;
+    void recordDonation(Donation donation) throws DatabaseConnectionException, InsufficientFundsException;
+    void addAdoptionEvent(AdoptionEvent event) throws DatabaseConnectionException;
+    void registerParticipant(int eventID, String participantName) throws DatabaseConnectionException, AdoptionException;
+    List<AdoptionEvent> getAdoptionEvents() throws DatabaseConnectionException;
+}
+
+
+
+___________&_&____
+
+
+package dao;
+
+import entity.*;
+import exception.*;
+import util.DBConnUtil;
+
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+public class PetPalsDAOImpl implements IPetPalsDAO {
+
+    @Override
+    public void initializeDatabase() throws DatabaseConnectionException {
+        try (Connection conn = DBConnUtil.getConnection()) {
+            Statement stmt = conn.createStatement();
+            stmt.execute("CREATE TABLE IF NOT EXISTS Pets (petID INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(50), age INT, breed VARCHAR(50), type VARCHAR(10), dogBreed VARCHAR(50), catColor VARCHAR(50))");
+            stmt.execute("CREATE TABLE IF NOT EXISTS Donations (donationID INT PRIMARY KEY AUTO_INCREMENT, donorName VARCHAR(100), amount DECIMAL(10,2), donationDate DATE, itemType VARCHAR(50))");
+            stmt.execute("CREATE TABLE IF NOT EXISTS AdoptionEvents (eventID INT PRIMARY KEY AUTO_INCREMENT, eventName VARCHAR(100), eventDate DATE)");
+            stmt.execute("CREATE TABLE IF NOT EXISTS Participants (participantID INT PRIMARY KEY AUTO_INCREMENT, eventID INT, participantName VARCHAR(100), FOREIGN KEY (eventID) REFERENCES AdoptionEvents(eventID))");
+        } catch (SQLException e) {
+            throw new DatabaseConnectionException("Failed to initialize database: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void addPet(Pet pet) throws DatabaseConnectionException, InvalidPetAgeException {
+        if (pet.getAge() <= 0) {
+            throw new InvalidPetAgeException("Pet age must be a positive integer: " + pet.getAge());
+        }
+        String sql = "INSERT INTO Pets (name, age, breed, type, dogBreed, catColor) VALUES (?, ?, ?, ?, ?, ?)";
+        try (Connection conn = DBConnUtil.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, pet.getName());
+            stmt.setInt(2, pet.getAge());
+            stmt.setString(3, pet.getBreed());
+            if (pet instanceof Dog) {
+                stmt.setString(4, "Dog");
+                stmt.setString(5, ((Dog) pet).getDogBreed());
+                stmt.setNull(6, Types.VARCHAR);
+            } else if (pet instanceof Cat) {
+                stmt.setString(4, "Cat");
+                stmt.setNull(5, Types.VARCHAR);
+                stmt.setString(6, ((Cat) pet).getCatColor());
+            }
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new DatabaseConnectionException("Failed to add pet: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public List<Pet> getAvailablePets() throws DatabaseConnectionException, NullReferenceException {
+        List<Pet> pets = new ArrayList<>();
+        String sql = "SELECT * FROM Pets";
+        try (Connection conn = DBConnUtil.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                String name = rs.getString("name");
+                if (name == null) {
+                    throw new NullReferenceException("Pet name is missing for petID: " + rs.getInt("petID"));
+                }
+                int age = rs.getInt("age");
+                String breed = rs.getString("breed");
+                String type = rs.getString("type");
+                if (type.equals("Dog")) {
+                    pets.add(new Dog(rs.getInt("petID"), name, age, breed, rs.getString("dogBreed")));
+                } else if (type.equals("Cat")) {
+                    pets.add(new Cat(rs.getInt("petID"), name, age, breed, rs.getString("catColor")));
+                }
+            }
+        } catch (SQLException e) {
+            throw new DatabaseConnectionException("Failed to retrieve pets: " + e.getMessage());
+        }
+        return pets;
+    }
+
+    @Override
+    public void recordDonation(Donation donation) throws DatabaseConnectionException, InsufficientFundsException {
+        if (donation.getAmount() < 10) {
+            throw new InsufficientFundsException("Donation amount must be at least $10: " + donation.getAmount());
+        }
+        String sql = "INSERT INTO Donations (donorName, amount, donationDate, itemType) VALUES (?, ?, ?, ?)";
+        try (Connection conn = DBConnUtil.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, donation.getDonorName());
+            stmt.setDouble(2, donation.getAmount());
+            if (donation instanceof CashDonation) {
+                stmt.setDate(3, ((CashDonation) donation).getDonationDate());
+                stmt.setNull(4, Types.VARCHAR);
+            } else if (donation instanceof ItemDonation) {
+                stmt.setNull(3, Types.DATE);
+                stmt.setString(4, ((ItemDonation) donation).getItemType());
+            }
+            stmt.executeUpdate();
+            donation.recordDonation();
+        } catch (SQLException e) {
+            throw new DatabaseConnectionException("Failed to record donation: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void addAdoptionEvent(AdoptionEvent event) throws DatabaseConnectionException {
+        String sql = "INSERT INTO AdoptionEvents (eventName, eventDate) VALUES (?, ?)";
+        try (Connection conn = DBConnUtil.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, event.getEventName());
+            stmt.setDate(2, event.getEventDate());
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new DatabaseConnectionException("Failed to add adoption event: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void registerParticipant(int eventID, String participantName) throws DatabaseConnectionException, AdoptionException {
+        String checkSql = "SELECT COUNT(*) FROM AdoptionEvents WHERE eventID = ?";
+        try (Connection conn = DBConnUtil.getConnection();
+             PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
+            checkStmt.setInt(1, eventID);
+            ResultSet rs = checkStmt.executeQuery();
+            if (rs.next() && rs.getInt(1) == 0) {
+                throw new AdoptionException("Event ID " + eventID + " does not exist");
+            }
+        } catch (SQLException e) {
+            throw new DatabaseConnectionException("Failed to check event: " + e.getMessage());
+        }
+
+        String sql = "INSERT INTO Participants (eventID, participantName) VALUES (?, ?)";
+        try (Connection conn = DBConnUtil.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, eventID);
+            stmt.setString(2, participantName);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new DatabaseConnectionException("Failed to register participant: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public List<AdoptionEvent> getAdoptionEvents() throws DatabaseConnectionException {
+        List<AdoptionEvent> events = new ArrayList<>();
+        String sql = "SELECT * FROM AdoptionEvents";
+        try (Connection conn = DBConnUtil.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                AdoptionEvent event = new AdoptionEvent(rs.getInt("eventID"), rs.getString("eventName"), rs.getDate("eventDate"));
+                String participantSql = "SELECT participantName FROM Participants WHERE eventID = ?";
+                try (PreparedStatement pStmt = conn.prepareStatement(participantSql)) {
+                    pStmt.setInt(1, event.getEventID());
+                    ResultSet pRs = pStmt.executeQuery();
+                    while (pRs.next()) {
+                        event.registerParticipant(pRs.getString("participantName"));
+                    }
+                }
+                events.add(event);
+            }
+        } catch (SQLException e) {
+            throw new DatabaseConnectionException("Failed to retrieve adoption events: " + e.getMessage());
+        }
+        return events;
+    }
+}
+
+_______________________
+
+
+package exception;
+
+public class InvalidPetAgeException extends Exception {
+    public InvalidPetAgeException(String message) {
+        super(message);
+    }
+}
+
+_________________
+
+package exception;
+
+public class NullReferenceException extends Exception {
+    public NullReferenceException(String message) {
+        super(message);
+    }
+}
+
+________________
+
+
+package exception;
+
+public class InsufficientFundsException extends Exception {
+    public InsufficientFundsException(String message) {
+        super(message);
+    }
+}
+
+__________''___
+
+package exception;
+
+public class AdoptionException extends Exception {
+    public AdoptionException(String message) {
+        super(message);
+    }
+}
+
+____________
+
+
+package exception;
+
+public class DatabaseConnectionException extends Exception {
+    public DatabaseConnectionException(String message) {
+        super(message);
+    }
+}
+
+_____________
+
+
+package util;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Properties;
+
+public class DBPropertyUtil {
+    public static String getConnectionString(String propertyFileName) {
+        Properties props = new Properties();
+        try (InputStream input = DBPropertyUtil.class.getClassLoader().getResourceAsStream(propertyFileName)) {
+            if (input == null) {
+                throw new IOException("Unable to find " + propertyFileName);
+            }
+            props.load(input);
+            String hostname = props.getProperty("hostname");
+            String dbname = props.getProperty("dbname");
+            String username = props.getProperty("username");
+            String password = props.getProperty("password");
+            String port = props.getProperty("port");
+            return "jdbc:mysql://" + hostname + ":" + port + "/" + dbname + "?user=" + username + "&password=" + password;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+}
+
+
+____________________
+
+package util;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+
+public class DBConnUtil {
+    public static Connection getConnection() throws DatabaseConnectionException {
+        String connectionString = DBPropertyUtil.getConnectionString("db.properties");
+        try {
+            return DriverManager.getConnection(connectionString);
+        } catch (SQLException e) {
+            throw new DatabaseConnectionException("Failed to connect to database: " + e.getMessage());
+        }
+    }
+
+    public static void closeConnection(Connection conn) {
+        if (conn != null) {
+            try {
+                conn.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
+
+
+___________________
+
+
+hostname=localhost
+dbname=petpals
+username=root
+password=your_password
+port=3306
+
+
+__________
+
+package main;
+
+import dao.PetPalsDAOImpl;
+import entity.*;
+import exception.*;
+import util.DBConnUtil;
+
+import java.sql.Date;
+import java.util.List;
+import java.util.Scanner;
+
+public class MainModule {
+    private static PetPalsDAOImpl dao = new PetPalsDAOImpl();
+    private static Scanner scanner = new Scanner(System.in);
+    private static PetShelter shelter = new PetShelter();
+
+    public static void main(String[] args) {
+        try {
+            dao.initializeDatabase();
+        } catch (DatabaseConnectionException e) {
+            System.out.println("Error initializing database: " + e.getMessage());
+            return;
+        }
+
+        while (true) {
+            displayMenu();
+            int choice = scanner.nextInt();
+            scanner.nextLine(); // Consume newline
+
+            try {
+                switch (choice) {
+                    case 1: // Add Dog
+                        addDog();
+                        break;
+                    case 2: // Add Cat
+                        addCat();
+                        break;
+                    case 3: // List Available Pets
+                        listAvailablePets();
+                        break;
+                    case 4: // Record Cash Donation
+                        recordCashDonation();
+                        break;
+                    case 5: // Record Item Donation
+                        recordItemDonation();
+                        break;
+                    case 6: // Add Adoption Event
+                        addAdoptionEvent();
+                        break;
+                    case 7: // Register Participant
+                        registerParticipant();
+                        break;
+                    case 8: // List Adoption Events
+                        listAdoptionEvents();
+                        break;
+                    case 9: // Exit
+                        System.out.println("Exiting...");
+                        DBConnUtil.closeConnection(null);
+                        scanner.close();
+                        System.exit(0);
+                    default:
+                        System.out.println("Invalid choice");
+                }
+            } catch (Exception e) {
+                System.out.println("Error: " + e.getMessage());
+            }
+        }
+    }
+
+    private static void displayMenu() {
+        System.out.println("\n=== PetPals Adoption Platform ===");
+        System.out.println("1. Add Dog");
+        System.out.println("2. Add Cat");
+        System.out.println("3. List Available Pets");
+        System.out.println("4. Record Cash Donation");
+        System.out.println("5. Record Item Donation");
+        System.out.println("6. Add Adoption Event");
+        System.out.println("7. Register Participant");
+        System.out.println("8. List Adoption Events");
+        System.out.println("9. Exit");
+        System.out.print("Enter your choice: ");
+    }
+
+    private static void addDog() throws DatabaseConnectionException, InvalidPetAgeException {
+        System.out.print("Enter Dog Name: ");
+        String name = scanner.nextLine();
+        System.out.print("Enter Age: ");
+        int age = scanner.nextInt();
+        scanner.nextLine();
+        System.out.print("Enter Breed: ");
+        String breed = scanner.nextLine();
+        System.out.print("Enter Dog Breed: ");
+        String dogBreed = scanner.nextLine();
+        Dog dog = new Dog(0, name, age, breed, dogBreed);
+        dao.addPet(dog);
+        shelter.addPet(dog);
+        System.out.println("Dog added successfully");
+    }
+
+    private static void addCat() throws DatabaseConnectionException, InvalidPetAgeException {
+        System.out.print("Enter Cat Name: ");
+        String name = scanner.nextLine();
+        System.out.print("Enter Age: ");
+        int age = scanner.nextInt();
+        scanner.nextLine();
+        System.out.print("Enter Breed: ");
+        String breed = scanner.nextLine();
+        System.out.print("Enter Cat Color: ");
+        String catColor = scanner.nextLine();
+        Cat cat = new Cat(0, name, age, breed, catColor);
+        dao.addPet(cat);
+        shelter.addPet(cat);
+        System.out.println("Cat added successfully");
+    }
+
+    private static void listAvailablePets() throws DatabaseConnectionException, NullReferenceException {
+        List<Pet> pets = dao.getAvailablePets();
+        pets.forEach(System.out::println);
+    }
+
+    private static void recordCashDonation() throws DatabaseConnectionException, InsufficientFundsException {
+        System.out.print("Enter Donor Name: ");
+        String donorName = scanner.nextLine();
+        System.out.print("Enter Amount: ");
+        double amount = scanner.nextDouble();
+        CashDonation donation = new CashDonation(0, donorName, amount, new Date(System.currentTimeMillis()));
+        dao.recordDonation(donation);
+        System.out.println("Cash donation recorded successfully");
+    }
+
+    private static void recordItemDonation() throws DatabaseConnectionException, InsufficientFundsException {
+        System.out.print("Enter Donor Name: ");
+        String donorName = scanner.nextLine();
+        System.out.print("Enter Amount: ");
+        double amount = scanner.nextDouble();
+        scanner.nextLine();
+        System.out.print("Enter Item Type (e.g., food, toys): ");
+        String itemType = scanner.nextLine();
+        ItemDonation donation = new ItemDonation(0, donorName, amount, itemType);
+        dao.recordDonation(donation);
+        System.out.println("Item donation recorded successfully");
+    }
+
+    private static void addAdoptionEvent() throws DatabaseConnectionException {
+        System.out.print("Enter Event Name: ");
+        String eventName = scanner.nextLine();
+        System.out.print("Enter Event Date (YYYY-MM-DD): ");
+        String dateStr = scanner.nextLine();
+        AdoptionEvent event = new AdoptionEvent(0, eventName, Date.valueOf(dateStr));
+        dao.addAdoptionEvent(event);
+        System.out.println("Adoption event added successfully");
+    }
+
+    private static void registerParticipant() throws DatabaseConnectionException, AdoptionException {
+        System.out.print("Enter Event ID: ");
+        int eventID = scanner.nextInt();
+        scanner.nextLine();
+        System.out.print("Enter Participant Name: ");
+        String participantName = scanner.nextLine();
+        dao.registerParticipant(eventID, participantName);
+        System.out.println("Participant registered successfully");
+    }
+
+    private static void listAdoptionEvents() throws DatabaseConnectionException {
+        List<AdoptionEvent> events = dao.getAdoptionEvents();
+        events.forEach(event -> {
+            System.out.println("Event: " + event.getEventName() + " on " + event.getEventDate());
+            event.getParticipants().forEach(p -> System.out.println("  Participant: " + p));
+        });
+    }
+}
+
+

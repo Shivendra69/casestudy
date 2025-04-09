@@ -606,3 +606,54 @@ ___________
         </plugins>
     </build>
 </project>
+
+
+
+
+_________________________
+
+
+package test;
+
+import dao.JobBoardDAOImpl;
+import entity.JobListing;
+import exception.DatabaseConnectionException;
+import exception.NegativeSalaryException;
+import org.junit.Before;
+import org.junit.Test;
+
+import java.sql.Date;
+import java.util.List;
+
+import static org.junit.Assert.*;
+
+public class TestJobBoard {
+    private JobBoardDAOImpl dao;
+
+    @Before
+    public void setUp() throws DatabaseConnectionException {
+        dao = new JobBoardDAOImpl();
+        dao.initializeDatabase();
+    }
+
+    @Test
+    public void testInsertAndRetrieveJobListing() throws DatabaseConnectionException {
+        JobListing job = new JobListing(0, 1, "Test Job", "Description", "Location", 50000, "Full-time", new Date(System.currentTimeMillis()));
+        dao.insertJobListing(job);
+        List<JobListing> jobs = dao.getJobListings();
+        assertFalse("Job list should not be empty", jobs.isEmpty());
+        assertEquals("Job title should match", "Test Job", jobs.get(0).getJobTitle());
+    }
+
+    @Test
+    public void testAverageSalaryWithNegative() throws DatabaseConnectionException {
+        JobListing job = new JobListing(0, 1, "Negative Job", "Description", "Location", -1000, "Part-time", new Date(System.currentTimeMillis()));
+        dao.insertJobListing(job);
+        try {
+            dao.calculateAverageSalary();
+            fail("Should throw NegativeSalaryException");
+        } catch (NegativeSalaryException e) {
+            assertEquals("Negative salary found in job listing", e.getMessage());
+        }
+    }
+}
